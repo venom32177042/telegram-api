@@ -1,40 +1,57 @@
-const express = require('express');
-const path = require('path');
+import express from "express";
+import fetch from "node-fetch";
+
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(express.json());
 
-// ===== 1. إعداد Telegram (متغير واحد) =====
-const TELEGRAM_CONFIG = process.env.TELEGRAM_CONFIG || "";
-let TELEGRAM_BOT_TOKEN = "";
-let TELEGRAM_CHAT_ID = "";
 
-if (TELEGRAM_CONFIG && TELEGRAM_CONFIG.includes(',')) {
-    const parts = TELEGRAM_CONFIG.split(',');
-    TELEGRAM_BOT_TOKEN = parts[0].trim();
-    TELEGRAM_CHAT_ID = parts[1].trim();
-    console.log('✅ Telegram: جاهز');
-} else {
-    console.log('⚠️  Telegram: غير مضبوط (سيتم حفظ الطلبات فقط في السجلات)');
+// مفتاح أمان خاص (من اختيارك)
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "CHANGE_ME";
+
+
+// بيانات Telegram
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || "";
+const CHAT_ID = process.env.CHAT_ID || "";
+
+
+// endpoint وحيد لإرسال الرسائل
+app.post("/send", async (req, res) => {
+// تحقق أمني
+if (req.headers["x-secret"] !== PRIVATE_KEY) {
+return res.status(401).json({ error: "Unauthorized" });
 }
 
-// ===== 2. إعدادات أساسية =====
-app.use(express.json());
-app.use(express.static(__dirname)); // يخدم الملفات الثابتة من المجلد الحالي
 
-// ===== 3. المسارات (Routes) =====
-// المسار الرئيسي - يخدم الصفحة الرئيسية
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+const { text } = req.body;
+if (!text) {
+return res.status(400).json({ error: "Text is required" });
+}
+
+
+try {
+await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({
+chat_id: CHAT_ID,
+text
+})
 });
 
-// مسار استقبال الطلبات من النموذج
-app.post('/api/order', async (req, res) => {
-    const order = req.body;
-    console.log('📦 طلب جديد:', { name: order.name, product: order.product });
 
-    // حاول الإرسال إلى Telegram إذا كانت الإعدادات صحيحة
-    if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
-        try {
+res.json({ success: true });
+} catch (err) {
+res.status(500).json({ error: "Telegram error" });
+}
+});
+
+
+// تشغيل السيرفر
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+console.log("Server running on port", PORT);
+});        try {
             const message = `طلب جديد من ${order.name} للشراء`;
             // كود إرسال Telegram (مبسط للتركيز على حل المشكلة)
             console.log('📤 (محاكاة) تم إرسال طلب إلى Telegram');
