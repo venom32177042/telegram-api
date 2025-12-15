@@ -1,116 +1,191 @@
-// server.js - السيرفر الرئيسي
+// ============================================
+// متجر Telegram - الإصدار المعدل لمتغير واحد
+// ============================================
+
 const express = require('express');
-const https = require('https');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ============================================
+// 1. إعدادات Telegram - متغير واحد فقط
+// ============================================
+// التنسيق: token,chat_id  (بدون مسافات بينهما)
+const TELEGRAM_CONFIG = process.env.TELEGRAM_CONFIG || "";
+let TELEGRAM_BOT_TOKEN = "";
+let TELEGRAM_CHAT_ID = "";
+
+// فصل التوكن ورقم الدردشة من متغير واحد
+if (TELEGRAM_CONFIG && TELEGRAM_CONFIG.includes(',')) {
+    const parts = TELEGRAM_CONFIG.split(',');
+    TELEGRAM_BOT_TOKEN = parts[0] ? parts[0].trim() : "";
+    TELEGRAM_CHAT_ID = parts[1] ? parts[1].trim() : "";
+    
+    console.log('✅ إعدادات Telegram جاهزة');
+    console.log(`   🤖 التوكن: ${TELEGRAM_BOT_TOKEN ? 'مضبوط' : 'مفقود'}`);
+    console.log(`   💬 رقم الدردشة: ${TELEGRAM_CHAT_ID ? 'مضبوط' : 'مفقود'}`);
+} else {
+    console.log('⚠️  تنبيه: TELEGRAM_CONFIG غير مضبوط أو تنسيقه خاطئ');
+    console.log('   - التنسيق الصحيح: التوكن,رقم_الدردشة');
+    console.log('   - مثال: 123456:ABCdef,987654321');
+}
+
 // Middleware
 app.use(express.json());
-app.use(express.static('.', {
-    extensions: ['html', 'htm']
-}));
+app.use(express.static('.'));
 
-// دالة لإرسال الرسالة لـ Telegram
-function sendTelegramMessage(message) {
-    return new Promise((resolve, reject) => {
-        const botToken = process.env.TELEGRAM_BOT_TOKEN;
-        const chatId = process.env.TELEGRAM_CHAT_ID;
+// ============================================
+// 2. دالة إرسال Telegram
+// ============================================
+async function sendTelegramMessage(orderData) {
+    // إذا لم تكن الإعدادات مكتملة
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        console.log('📝 طلب مستلم (لم يتم الإرسال لـ Telegram)');
+        console.log('   السبب: إعدادات Telegram غير مكتملة');
+        return { success: false, reason: 'telegram_not_configured' };
+    }
+    
+    try {
+        const message = `
+🛒 **طلب جديد!** #${Date.now().toString().slice(-6)}
+
+📦 **المنتج:** ${orderData.product}
+💰 **السعر:** ${orderData.productPrice} ريال
+🔢 **الكمية:** ${orderData.quantity}
+
+👤 **العميل:** ${orderData.name}
+📱 **الهاتف:** ${orderData.phone}
+📍 **العنوان:** ${orderData.address}
+
+💵 **المجموع:** ${orderData.total} ريال
+📝 **الملاحظات:** ${orderData.notes || 'لا توجد'}
+
+⏰ **الوقت:** ${orderData.orderTime}
+        `;
         
-        // إذا لم يكن هناك توكن، لا ترسل لـ Telegram
-        if (!botToken || !chatId) {
-            console.log('⚠️  Telegram credentials not set, skipping Telegram notification');
-            resolve(false);
-            return;
-        }
+        const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
         
-        const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-        
-        const postData = JSON.stringify({
-            chat_id: chatId,
-            text: message,
-            parse_mode: 'HTML'
-        });
-        
-        const options = {
+        const response = await fetch(telegramUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(postData)
-            }
-        };
-        
-        const req = https.request(telegramUrl, options, (res) => {
-            let data = '';
-            
-            res.on('data', (chunk) => {
-                data += chunk;
-            });
-            
-            res.on('end', () => {
-                try {
-                    const response = JSON.parse(data);
-                    if (response.ok) {
-                        console.log('✅ Telegram message sent successfully');
-                        resolve(true);
-                    } else {
-                        console.error('❌ Telegram error:', response.description);
-                        resolve(false);
-                    }
-                } catch (error) {
-                    console.error('❌ Error parsing Telegram response:', error);
-                    resolve(false);
-                }
-            });
+            },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: message,
+                parse_mode: 'Markdown'
+            })
         });
         
-        req.on('error', (error) => {
-            console.error('❌ Telegram request error:', error.message);
-            resolve(false);
-        });
+        const data = await response.json();
         
-        req.write(postData);
-        req.end();
-    });
+        if (data.ok) {
+            console.log(`✅ تم إرسال الطلب إلى Telegram (Message ID: ${data.result.message_id})`);
+            return { success: true, messageId: data.result.message_id };
+        } else {
+            console.error('❌ فشل إرسال Telegram:', data.description);
+            return { success: false, reason: 'telegram_error', error: data.description };
+        }
+        
+    } catch (error) {
+        console.error('❌ خطأ في إرسال Telegram:', error.message);
+        return { success: false, reason: 'network_error', error: error.message };
+    }
 }
 
-// Route الرئيسية
+// ============================================
+// 3. مسارات API
+// ============================================
+
+// الصفحة الرئيسية
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-// Route لاستقبال الطلبات
+// استقبال الطلبات
 app.post('/api/order', async (req, res) => {
+    console.log('\n📦 === طلب جديد ورد ===');
+    
     try {
         const orderData = req.body;
         
-        // تسجيل الطلب في الكونسول
-        console.log('📦 New Order Received:', {
-            product: orderData.product,
-            customer: orderData.name,
-            phone: orderData.phone,
-            total: orderData.total,
-            time: new Date().toLocaleString('ar-SA')
-        });
+        // تسجيل بيانات الطلب
+        console.log(`   المنتج: ${orderData.product}`);
+        console.log(`   العميل: ${orderData.name}`);
+        console.log(`   الهاتف: ${orderData.phone}`);
+        console.log(`   المجموع: ${orderData.total} ريال`);
+        console.log(`   الوقت: ${new Date().toLocaleString('ar-SA')}`);
         
-        // بناء رسالة Telegram
-        const telegramMessage = `
-🛒 <b>طلب جديد!</b>
+        // محاولة الإرسال إلى Telegram
+        const telegramResult = await sendTelegramMessage(orderData);
+        
+        // الرد للعميل (دائماً نجاح)
+        const response = {
+            success: true,
+            message: 'تم استلام طلبك بنجاح! سنتصل بك خلال 24 ساعة.',
+            orderId: 'ORD-' + Date.now().toString().slice(-6),
+            telegramSent: telegramResult.success
+        };
+        
+        console.log(`   ✅ تم الرد للعميل: ${response.orderId}`);
+        console.log(`   📤 حالة Telegram: ${telegramResult.success ? 'نعم' : 'لا'}`);
+        
+        res.json(response);
+        
+    } catch (error) {
+        console.error('❌ خطأ في معالجة الطلب:', error);
+        
+        // حتى مع الخطأ، نرد بنجاح للعميل
+        res.json({
+            success: true,
+            message: 'تم استلام طلبك بنجاح!',
+            orderId: 'TEMP-' + Date.now().toString().slice(-6),
+            telegramSent: false
+        });
+    }
+    
+    console.log('📦 === نهاية الطلب ===\n');
+});
 
-<b>المنتج:</b> ${orderData.product}
-<b>السعر:</b> ${orderData.productPrice} ريال
-<b>الكمية:</b> ${orderData.quantity}
+// صفحة الحالة
+app.get('/status', (req, res) => {
+    const status = {
+        service: 'متجر Telegram',
+        status: '🟢 يعمل',
+        port: PORT,
+        telegramConfigured: !!(TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID),
+        hasToken: !!TELEGRAM_BOT_TOKEN,
+        hasChatId: !!TELEGRAM_CHAT_ID,
+        timestamp: new Date().toISOString()
+    };
+    
+    console.log('📊 حالة الخدمة:', status);
+    res.json(status);
+});
 
-<b>العميل:</b> ${orderData.name}
-<b>الهاتف:</b> ${orderData.phone}
-<b>العنوان:</b> ${orderData.address}
+// صفحة 404
+app.use((req, res) => {
+    res.status(404).sendFile(__dirname + '/index.html');
+});
 
-<b>التوصيل:</b> ${orderData.shipping} ريال
-<b>المجموع:</b> ${orderData.total} ريال
+// ============================================
+// 4. تشغيل الخادم
+// ============================================
+app.listen(PORT, () => {
+    console.log('\n' + '='.repeat(50));
+    console.log('🚀 متجر Telegram يعمل الآن!');
+    console.log('='.repeat(50));
+    console.log(`   🔗 الرابط: http://localhost:${PORT}`);
+    console.log(`   🔗 الرابط العام: https://telegram-venom.onrender.com`);
+    console.log(`   🤖 Telegram: ${TELEGRAM_BOT_TOKEN ? 'مضبوط ✅' : 'غير مضبوط ⚠️'}`);
+    console.log(`   💬 Chat ID: ${TELEGRAM_CHAT_ID ? 'مضبوط ✅' : 'غير مضبوط ⚠️'}`);
+    console.log('='.repeat(50));
+    console.log('📝 ملاحظة: الطلبات ستسجل هنا وفي Telegram إذا كان مضبوطاً\n');
+});
 
-<b>ملاحظات:</b> ${orderData.notes || 'لا توجد'}
-
-<b>وقت الطلب:</b> ${orderData.orderTime}
-<b>رقم الطلب:</b> #${Date.now().toString().slice(-6)}
+// معالجة أخطاء غير متوقعة
+process.on('uncaughtException', (error) => {
+    console.error('🔥 خطأ غير متوقع:', error);
+});<b>رقم الطلب:</b> #${Date.now().toString().slice(-6)}
         `;
         
         // إرسال لـ Telegram (في الخلفية، لا ننتظر النتيجة)
