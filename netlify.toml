@@ -1,0 +1,15 @@
+[build]
+  functions = "netlify/functions"});
+
+// تشغيل السيرفر
+app.listen(PORT, () => {
+    console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`🌐 Open: http://localhost:${PORT}`);
+    console.log(`🤖 Telegram configured: ${process.env.TELEGRAM_BOT_TOKEN ? 'YES' : 'NO'}`);
+    
+    // نصيحة للمستخدم
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
+        console.log('⚠️  Warning: TELEGRAM_BOT_TOKEN is not set');
+        console.log('ℹ️  Orders will be logged locally but not sent to Telegram');
+    }
+});
