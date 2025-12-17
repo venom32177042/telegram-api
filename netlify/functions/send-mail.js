@@ -12,12 +12,21 @@ exports.handler = async function(event) {
   }
 
   try {
-    const { name, email, message } = JSON.parse(event.body || "{}" );
+    let data;
+    // حاول تحليل JSON من body، أو افترض أن body نص خام
+    try {
+      data = JSON.parse(event.body || "{}");
+    } catch {
+      // إذا body نص عادي، حوله إلى حقل message
+      data = { name: "Unknown", email: "Unknown", message: event.body || "" };
+    }
 
-    if (!name || !email || !message) {
+    const { name, email, message } = data;
+
+    if (!message) {
       return {
         statusCode: 400,
-        body: "Missing fields"
+        body: "Missing message"
       };
     }
 
@@ -34,6 +43,12 @@ exports.handler = async function(event) {
     };
 
   } catch (error) {
+    return {
+      statusCode: 500,
+      body: error.message
+    };
+  }
+}
     return {
       statusCode: 500,
       body: error.message
