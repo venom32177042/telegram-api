@@ -1,8 +1,8 @@
-import { Resend } from "resend";
+const { Resend } = require("resend");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function handler(event) {
+exports.handler = async function(event) {
   // السماح فقط بـ POST
   if (event.httpMethod !== "POST") {
     return {
@@ -34,6 +34,12 @@ export async function handler(event) {
     };
 
   } catch (error) {
+    return {
+      statusCode: 500,
+      body: error.message
+    };
+  }
+}
     return {
       statusCode: 500,
       body: error.message
