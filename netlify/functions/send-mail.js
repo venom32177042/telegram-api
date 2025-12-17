@@ -23,7 +23,7 @@ export async function handler(event) {
 
     await resend.emails.send({
       from: "onboarding@resend.dev",
-      to: "YOUR_EMAIL@gmail.com",
+      to: "king32177042@gmail.com",
       subject: "New Message",
       text: `Name: ${name}\nEmail: ${email}\n\n${message}`
     });
@@ -34,6 +34,12 @@ export async function handler(event) {
     };
 
   } catch (error) {
+    return {
+      statusCode: 500,
+      body: error.message
+    };
+  }
+}
     return {
       statusCode: 500,
       body: error.message
