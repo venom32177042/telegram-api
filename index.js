@@ -1,7 +1,5 @@
 
 
-function sendi() {
-
   
   async function sendEmail() {
   const data = {
@@ -25,4 +23,4 @@ function sendi() {
   }
 }
   
-}
+
