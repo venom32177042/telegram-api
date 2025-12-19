@@ -18,7 +18,7 @@ exports.handler = async (event) => {
 
     await resend.emails.send({
       from: "Website <onboarding@resend.dev>",
-      to: ["your@email.com"], // ايميلك
+      to: ["king32177042@gmail.com"], // ايميلك
       subject: "طلب جديد",
       html: `
         <h2>بيانات الطلب</h2>
@@ -35,6 +35,13 @@ exports.handler = async (event) => {
       body: JSON.stringify({ success: true })
     };
 
+  } catch (err) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message })
+    };
+  }
+};
   } catch (err) {
     return {
       statusCode: 500,
