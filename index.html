@@ -1,40 +1,39 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>متجرنا الإلكتروني | اطلب الآن</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        :root {
-            --primary: #2563eb;
-            --secondary: #3b82f6;
-            --success: #10b981;
-            --danger: #ef4444;
-            --dark: #1e293b;
-            --light: #f8fafc;
-        }
-        
-        body {
-            background: var(--light);
-            color: var(--dark);
-            line-height: 1.6;
-            padding-bottom: 80px;
-        }
-        
-        .container {
-            max-width: 100%;
-            padding: 0 15px;
-        }
-        
-        /* الهيدر */
+<meta charset="UTF-8">
+<title>إرسال الطلب</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<input id="fullName" placeholder="الاسم الكامل">
+<input id="phone" placeholder="رقم الهاتف">
+<input id="paymentMethod" placeholder="وسيلة الدفع">
+<input id="paymentNumber" placeholder="رقم المدفوعة">
+<input id="productId" placeholder="ID المنتج">
+
+<button onclick="sendEmail()">إرسال</button>
+
+<p id="status"></p>
+
+<script src="index.js">index.js</script>
+</body>
+</html>  } else {
+    document.getElementById("status").innerText = "حدث خطأ";
+  }
+}
+</script>
+
+</body>
+</html>
+  } catch (err) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message })
+    };
+  }
+};        /* الهيدر */
         header {
             background: linear-gradient(135deg, var(--dark), #334155);
             color: white;
