@@ -3,38 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <title>إرسال الطلب</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<input id="fullName" placeholder="الاسم الكامل"><br>
-<input id="phone" placeholder="رقم الهاتف"><br>
-<input id="paymentMethod" placeholder="وسيلة الدفع"><br>
-<input id="paymentNumber" placeholder="رقم المدفوعة"><br>
-<input id="productId" placeholder="ID المنتج"><br>
+<input id="fullName" placeholder="الاسم الكامل">
+<input id="phone" placeholder="رقم الهاتف">
+<input id="paymentMethod" placeholder="وسيلة الدفع">
+<input id="paymentNumber" placeholder="رقم المدفوعة">
+<input id="productId" placeholder="ID المنتج">
 
-<button onclick="sendEmail()">إرسال</button>
+<button onclick="sendi()">إرسال</button>
 
 <p id="status"></p>
 
-<script>
-async function sendEmail() {
-  const data = {
-    fullName: document.getElementById("fullName").value,
-    phone: document.getElementById("phone").value,
-    paymentMethod: document.getElementById("paymentMethod").value,
-    paymentNumber: document.getElementById("paymentNumber").value,
-    productId: document.getElementById("productId").value
-  };
-
-  const res = await fetch("/.netlify/functions/sendEmail", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
-
-  if (res.ok) {
-    document.getElementById("status").innerText = "تمت المهمة بنجاح";
-  } else {
+<script src="index.js">index.js</script>
+</body>
+</html>  } else {
     document.getElementById("status").innerText = "حدث خطأ";
   }
 }
